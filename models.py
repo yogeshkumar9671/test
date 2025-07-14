@@ -196,25 +196,25 @@ class Placed_Order(models.Model):
     def __str__(self):
         return str(self.product)
     
-    def save(self, *args, **kwargs):
-        if not self.expected_delivery_date:
-            self.expected_delivery_date = self.datetime_of_payment + timedelta(days=7)
+    # def save(self, *args, **kwargs):
+    #     if not self.expected_delivery_date:
+    #         self.expected_delivery_date = self.datetime_of_payment + timedelta(days=7)
         
-        if not self.offer:
-            off = (self.actual_price-self.selling_price)/self.actual_price
-            self.offer = round(off * 100, 2)
+    #     if not self.offer:
+    #         off = (self.actual_price-self.selling_price)/self.actual_price
+    #         self.offer = round(off * 100, 2)
         
-        super().save(*args, **kwargs)
+    #     super().save(*args, **kwargs)
 
 
 
 
-# class Order_Tracker(models.Model):
-#     orderInfo = models.ForeignKey(Placed_Order, on_delete=models.CASCADE, null=True, blank=True)
-#     update_id= models.AutoField(primary_key=True)
-#     tracking_id= models.CharField(max_length=90000)
-#     update_desc= models.CharField(max_length=5000)
-#     timestamp= models.DateField(auto_now_add= True)
+class Order_Tracker(models.Model):
+    orderInfo = models.ForeignKey(Placed_Order, on_delete=models.CASCADE, null=True, blank=True)
+    update_id= models.AutoField(primary_key=True)
+    tracking_id= models.CharField(max_length=90000)
+    update_desc= models.CharField(max_length=5000)
+    timestamp= models.DateField(auto_now_add= True)
 
-#     def __str__(self): 
-#         return self.update_desc[0:7] + "..."
+    def __str__(self): 
+        return self.update_desc[0:7] + "..."

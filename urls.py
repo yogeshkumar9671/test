@@ -54,6 +54,11 @@ urlpatterns = [
     path('cart/', views.cart, name='cart'),
     path('billing-address/', views.billing_address, name='billing_address'),
     path('checkout/', views.checkout, name='checkout'),
+    path('paymentdone/', views.payment_done, name='paymentdone'),
+    path('paymentfailed/', views.payment_failed, name='paymentfailed'),
+    path('handlerequest/', views.handlerequest, name="handlerequest"),
+    path('orders/', views.orders, name='orders'),
+    path('tracker/', views.tracker, name="tracker"),
 ]
 
 

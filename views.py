@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 from .forms import ProfileForm
 
 
-from .models import Profile, Address
+from .models import Profile, Address, Placed_Order, Order_Tracker
 
 
 def index(request):
@@ -373,152 +373,6 @@ def add_to_cart(request, product_id):
 
 
 
-# def add_to_cart(request, product_id):
-#     product = get_object_or_404(Product, id=product_id)
-#     quantity_requested = int(request.POST.get('quantity'))
-#     # Only check availability, DO NOT reduce stock yet
-#     # if product.quantity >= quantity_requested:
-#     #     cart_item, created = C.objects.get_or_create(user=request.user, product=product)
-#     #     if not created:
-#     #         cart_item.quantity += quantity_requested
-#     #     else:
-#     #         cart_item.quantity = quantity_requested
-#     #     cart_item.save()
-#     #     messages.success(request, f"{product.title} added to cart.")
-#     # else:
-#     #     messages.error(request, "Not enough stock available.")
-
-    # return redirect('productdetails', product_id=product.id)
-
-
-
-
-# from django.contrib.auth.decorators import login_required
-# from django.shortcuts import render, redirect
-# from django.contrib import messages
-# from django.conf import settings
-# from django.contrib.sites.shortcuts import get_current_site
-# from paywix.payu import Payu
-# import hashlib
-# from random import randint
-
-# from livingstone_app.forms import CustomerAddressForm
-# from livingstone_app.models import CartItem, Address
-
-
-# @login_required(login_url="/login")
-# def billing_and_checkout(request):
-#     user = request.user
-#     TotalCartItems = len(CartItem.objects.filter(user=user))
-
-#     # Get user's cart items
-#     cart = CartItem.objects.filter(user=user, availability=True)
-
-#     if not cart.exists():
-#         messages.error(request, "Product is out of stock")
-#         return redirect('/cart')
-
-#     addresses = Address.objects.filter(user=user)
-
-#     # Step 1: Handle address form submission (POST)
-#     if request.method == "POST" and "address_form_submit" in request.POST:
-#         form = CustomerAddressForm(request.POST)
-#         if form.is_valid():
-#             address_type = request.POST.get("addressType")
-#             address = form.save(commit=False)
-#             address.user = user
-#             address.home = True if address_type == "home" else False
-#             address.office = True if address_type == "office" else False
-#             address.save()
-#             messages.success(request, "Address added successfully!")
-#             return redirect(request.path)  # Refresh page to show new address
-#     else:
-#         form = CustomerAddressForm()
-
-#     # Step 2: Handle checkout if address is selected
-#     selected_address_id = request.GET.get("custid")
-#     if selected_address_id:
-#         selected_address = Address.objects.filter(id=selected_address_id, user=user).first()
-
-#         if not selected_address:
-#             messages.error(request, "Please select a valid shipping address.")
-#             return redirect('/deliveryaddress')
-
-#         # Start checkout logic
-#         amount = 0
-#         selling_price = 0
-
-#         for item in cart:
-#             amount += item.quantity * item.product.actual_price
-#             selling_price += item.quantity * item.product.selling_price
-
-#             shipping_price = item.product.shipping_charges
-#             totalamount = selling_price + shipping_price
-
-#             item.address = selected_address
-#             product_id = item.datetime_of_order.strftime('PDOLIFT%Y%m%dODR') + str(item.id)
-#             item.product_id_number = product_id
-
-#         order_id = cart[0].datetime_of_order.strftime('PAY2LIFT%Y%m%dODR') + str(cart[0].id)
-#         for item in cart:
-#             item.order_id = order_id
-
-#         # Prepare PayU payment data
-#         product_titles = [item.product.product_title for item in cart]
-#         buyer = selected_address
-#         payu_config = settings.PAYU_CONFIG
-#         merchant_key = payu_config['merchant_key']
-#         merchant_salt = payu_config['merchant_salt']
-#         mode = payu_config['mode']
-
-#         txnid = hashlib.sha256(str(randint(0, 9999)).encode("utf-8")).hexdigest().lower()[:16]
-
-#         hash_string = f"{merchant_key}|{txnid}|{float(totalamount)}|{product_titles[0]}|{buyer.full_name}|{buyer.email}|||||||||||{merchant_salt}"
-#         generated_hash = hashlib.sha512(hash_string.encode('utf-8')).hexdigest().lower()
-
-#         surl = f"https://{get_current_site(request)}/handlerequest/"
-#         furl = f"https://{get_current_site(request)}/paymentfailed/"
-
-#         payu = Payu(merchant_key, merchant_salt, mode)
-#         payu_data = payu.transaction(
-#             amount=totalamount,
-#             firstname=buyer.full_name,
-#             email=buyer.email,
-#             productinfo=product_titles,
-#             phone=buyer.mobile_number,
-#             surl=surl,
-#             furl=furl,
-#             service_provider="Johnnette",
-#             txnid=txnid,
-#             hash=generated_hash,
-#             hash_string=hash_string
-#         )
-
-#         for item in cart:
-#             item.transaction_id = txnid
-#             item.save()
-
-#         context = {
-#             "add": [selected_address],
-#             "totalamount": totalamount,
-#             "cart_items": cart,
-#             "callback_url": surl,
-#             "selling_price": selling_price,
-#             "TotalCartItems": TotalCartItems,
-#             "data": payu_data,
-#         }
-#         return render(request, 'app/checkout.html', context)
-
-#     # Render address selection and form page
-#     context = {
-#         'forms': form,
-#         "add": addresses,
-#         "TotalCartItems": TotalCartItems,
-#         "cart_items": cart,
-#     }
-#     return render(request, 'billingAddress.html', context)
-
-
 
 
 
@@ -679,8 +533,10 @@ def checkout(request):
             txnid = txnid
             hash_string = hash_string
             hash_ = generated_hash
-            surl = 'https://'+ str(get_current_site(request))+"/handlerequest/"
-            furl = 'https://'+ str(get_current_site(request))+"/paymentfailed/"
+            surl = 'http://'+ str(get_current_site(request))+"/handlerequest/"
+            furl = 'http://'+ str(get_current_site(request))+"/paymentfailed/"
+            # surl = 'http://'+ str(get_current_site(request))+"/handlerequest/"
+            # furl = 'http://'+ str(get_current_site(request))+"/paymentfailed/"
             
             payu = Payu(merchant_key, merchant_salt, mode)         
             
@@ -692,7 +548,7 @@ def checkout(request):
                 "phone": buyer_details.mobile_number,
                 "surl": surl,
                 "furl": furl,
-                "service_provider" : "Johnnette",
+                "service_provider" : "livingstoneinstitute",
                 "txnid" : txnid,
                 "hash" : hash_,
                 "hash_string" : hash_string,
@@ -710,7 +566,8 @@ def checkout(request):
             messages.error(request, "Order Id is Missing")
             return redirect('/deliveryaddress')
 
-        callback_url = 'https://'+ str(get_current_site(request))+"/handlerequest/"
+        # callback_url = 'https://'+ str(get_current_site(request))+"/handlerequest/"
+        callback_url = 'http://'+ str(get_current_site(request))+"/handlerequest/"
     context={
         "add":add,
         "totalamount":totalamount,
@@ -724,47 +581,47 @@ def checkout(request):
 
 
 
-# from django.core.mail import EmailMultiAlternatives
-# from django.views.decorators.csrf import csrf_exempt
-# from django.template.loader import get_template
-# from datetime import datetime
-# @csrf_exempt
-# def handlerequest(request):
-#     if request.method == 'POST':
-#         try:
-#             transaction_id = request.POST.get("txnid")
-#             mihpayid = request.POST.get("mihpayid")
-#             hash = request.POST.get("hash")
-#             mode = request.POST.get("mode")
-#             status = request.POST.get("status")
+from django.core.mail import EmailMultiAlternatives
+from django.views.decorators.csrf import csrf_exempt
+from django.template.loader import get_template
+from datetime import datetime
+@csrf_exempt
+def handlerequest(request):
+    if request.method == 'POST':
+        try:
+            transaction_id = request.POST.get("txnid")
+            mihpayid = request.POST.get("mihpayid")
+            hash = request.POST.get("hash")
+            mode = request.POST.get("mode")
+            status = request.POST.get("status")
 
-#             product = [p for p in Cart_Item.objects.all() if p.transaction_id==transaction_id and p.availability==True ]
+            product = [p for p in CartItem.objects.all() if p.transaction_id==transaction_id and p.availability==True ]
 
-#             print("product", product)
+            print("product", product)
 
-#             for order_db in product:
-#                 order_db.mihpayid=mihpayid
-#                 order_db.hash=hash
-#                 order_db.save()
+            for order_db in product:
+                order_db.mihpayid=mihpayid
+                order_db.hash=hash
+                order_db.save()
 
-#                 print("inside for loop", order_db.mihpayid)
-#                 print("inside for loop", order_db.hash)
+                print("inside for loop", order_db.mihpayid)
+                print("inside for loop", order_db.hash)
 
                             
-#             if status == 'success':
-#                 order_db = [p for p in Cart_Item.objects.all() if p.transaction_id==transaction_id and p.availability==True ]
-#                 print("status", status)
+            if status == 'success':
+                order_db = [p for p in CartItem.objects.all() if p.transaction_id==transaction_id and p.availability==True ]
+                print("status", status)
 
-#         except:
-#             return HttpResponse("third 505 Not Found")
+        except:
+            return HttpResponse("third 505 Not Found")
         
-#     context={
-#         "transaction_id":transaction_id,
-#         "mihpayid":mihpayid,
-#         "status":status,
-#         "mode":mode,
-#     }
-#     return render(request, "app/transaction_successfull.html", context)
+    context={
+        "transaction_id":transaction_id,
+        "mihpayid":mihpayid,
+        "status":status,
+        "mode":mode,
+    }
+    return render(request, "transaction_successfull.html", context)
 
 
 
@@ -776,8 +633,152 @@ def checkout(request):
         
 # from datetime import datetime
 # def payment_done(request):
-    user=request.user
+#     user=request.user
     
+#     mail_date = []
+#     mail_order_id = []
+#     mail_product_id = []
+#     mail_product_title = []
+#     mail_quantity = []
+#     mail_total_cost = []
+
+#     transaction_id = request.GET.get('transaction_id')
+#     mihpayid = request.GET.get('mihpayid')
+#     status = request.GET.get('status')
+#     mode = request.GET.get('mode')
+
+#     print("payment done == mihpayid", mihpayid)
+#     print("payment done == transaction_id", transaction_id, "type", type(transaction_id))
+#     print("payment done == status", status)
+#     print("payment done == mode", mode)
+#     print("payment done == user", user)
+    
+#     if status == 'success':
+#         order_db = [p for p in CartItem.objects.all() if p.user==request.user and p.transaction_id==transaction_id and p.mihpayid==mihpayid and p.availability==True ]
+        
+#         for order_db in order_db:
+#             address=Address.objects.get(id=order_db.address and user==request.user)
+#             prod=Product.objects.get(id=order_db.product.id)
+
+#             if prod.quantity >= order_db.quantity: 
+#                 available_stock = prod.quantity-order_db.quantity
+#                 prod.quantity = available_stock
+#                 prod.save()
+#             else:
+#                 # Handle the error: maybe raise an exception or redirect with an error message
+#                 return HttpResponse("Insufficient stock for product: " + prod.name)
+                    
+#             order_placed = Placed_Order(price=order_db.product.price, order_id=order_db.order_id, product_id_number=order_db.product_id_number, user=user, address=address, transaction_id=order_db.transaction_id, product=order_db.product, quantity=order_db.quantity, payment_status=1, mihpayid=order_db.mihpayid, hash=order_db.hash)
+#             order_placed.save()
+
+#             update= Order_Tracker(tracking_id=order_db.product_id_number, update_desc="The order has been placed", orderInfo=order_placed)
+#             update.save()            
+                        
+#             mail_date.append(order_db.datetime)
+#             mail_order_id.append(order_db.order_id)
+#             mail_product_id.append(order_db.product_id_number)
+#             mail_product_title.append(order_db.product.title)
+#             mail_quantity.append(order_db.quantity)
+#             mail_total_cost.append(order_db.product.price)
+            
+#             order_db.delete()
+
+#     all_datetime=mail_date[0]
+#     datetime_string=str(all_datetime)
+#     order_datetime=datetime.fromisoformat(datetime_string)
+#     order_date=order_datetime.date()
+#     total=0
+#     email=address.email
+#     house_no=address.house_no
+#     area=address.area
+#     city=address.city
+#     state=address.state
+#     pincode=address.pincode
+#     circle = "\u25E6"
+#     disc = "\u25CF"
+#     product_info = []
+#     for i in range(len(mail_product_title)):
+#         # info = f" {disc} {mail_product_id[i]} - {mail_product_title[i]} - {mail_quantity[i]} x Rs{mail_total_cost[i]:.2f} = Rs{mail_quantity[i]*mail_total_cost[i]:.2f}"
+#         info = f" {disc} {mail_product_title[i]} - {mail_quantity[i]} x Rs{mail_total_cost[i]:.2f} = Rs{mail_quantity[i]*mail_total_cost[i]:.2f}"
+#         total += mail_quantity[i]*mail_total_cost[i]
+#         product_info.append(info)
+
+#     template1 = f"Dear {address.full_name} \n\nThank you for your recent purchase from our store. We are pleased to confirm that your order has been received and is being processed. Below are the details of your order: \n\nOrder ID: {mail_order_id[0]}\nDate of Purchase: {order_date}\n\n"
+#     template2 = "Order Summary:\n{}"
+#     template3 = template2.format('\n'.join(product_info))
+#     template4 = f"\n {disc} Shipping: 70INR\n {disc} Taxes: Rs6.00\n {disc} Total: Rs{total}\n\nShipping Information:\n{address.full_name}\n{house_no}, {area}\n{city}, {state} {pincode}\nDelivery Method: Standard Shipping\nEstimated Delivery Date: March 30, 2023\n\nPayment Information:\nPayment Method: {mode}\nTotal Amount Paid: Rs{70+total}\n\nContact Information:\nIf you have any questions or concerns about your order, please do not hesitate to contact us at 1-800-123-4567 or support@livingstoneinstitute.com.\n\nCancellation and Return Policy:\nYou can cancel your order within 24 hours of placing it. If you are not completely satisfied with your purchase, you can return it for a full refund within 07 days.\n\nThank you for choosing our store. We appreciate your business and hope to see you again soon.\n\nSincerely,\nLivingstone Luxury Team."
+    
+#     template5=template1+template3+template4
+
+#     send_mail(
+#         f'Order Confirmation: {mail_order_id[0]} from JTPL STORE',
+        
+#         template5,
+
+#         'nisha@johnnette.com',
+#         [f'{email}'],
+#         fail_silently=False,
+#     )     
+#     return redirect("/orders")
+
+
+
+
+
+
+
+
+
+
+ 
+        
+from datetime import datetime
+import easypost
+easypost.api_key = settings.EASYPOST_API_KEY
+def payment_done(request):
+    user=request.user
+
+    # Create EasyPost shipment
+    # to_address = easypost.Address.create(
+    #     name=address.full_name,
+    #     street1=address.house_no + ", " + address.area,
+    #     city=address.city,
+    #     state=address.state,
+    #     zip=address.pincode,
+    #     country="IN",
+    #     phone="9999999999"  # Optional
+    # )
+    
+
+    # from_address = easypost.Address.create(
+    #     company="JohnnetteStore",
+    #     street1="123 Main St",
+    #     city="Mumbai",
+    #     state="MH",
+    #     zip="400001",
+    #     country="IN",
+    #     phone="18001234567"
+    # )
+
+    # parcel = easypost.Parcel.create(
+    #     length=10,
+    #     width=5,
+    #     height=4,
+    #     weight=500  # in grams
+    # )
+
+    # shipment = easypost.Shipment.create(
+    #     to_address=to_address,
+    #     from_address=from_address,
+    #     parcel=parcel
+    # )
+
+    # # Buy the cheapest rate
+    # shipment.buy(rate=shipment.lowest_rate())
+
+    # tracking_code = shipment.tracking_code
+    # label_url = shipment.postage_label.label_url
+
     mail_date = []
     mail_order_id = []
     mail_product_id = []
@@ -790,36 +791,98 @@ def checkout(request):
     status = request.GET.get('status')
     mode = request.GET.get('mode')
 
-    print("payment done == mihpayid", mihpayid)
-    print("payment done == transaction_id", transaction_id, "type", type(transaction_id))
-    print("payment done == status", status)
-    print("payment done == mode", mode)
-    print("payment done == user", user)
-    
+
     if status == 'success':
-        order_db = [p for p in Cart_Item.objects.all() if p.user==request.user and p.transaction_id==transaction_id and p.mihpayid==mihpayid and p.availability==True ]
+        order_db = [p for p in CartItem.objects.all() if p.user==request.user and p.transaction_id==transaction_id and p.mihpayid==mihpayid and p.availability==True ]
         
+        # orders = [
+        #     item for item in CartItem.objects.all()
+        #     if item.user == user and item.transaction_id == transaction_id and item.mihpayid == mihpayid and item.availability
+        # ]
+
         for order_db in order_db:
             address=Address.objects.get(id=order_db.address and user==request.user)
-            
             prod=Product.objects.get(id=order_db.product.id)
-            if not prod.available_on_backorder:
-                available_stock = prod.number_of_products_in_stock-order_db.quantity
-                prod.number_of_products_in_stock = available_stock
+
+            if prod.quantity >= order_db.quantity: 
+                available_stock = prod.quantity-order_db.quantity
+                prod.quantity = available_stock
                 prod.save()
+            else:
+                # Handle the error: maybe raise an exception or redirect with an error message
+                return HttpResponse("Insufficient stock for product: " + prod.name)
                     
-            order_placed = Placed_Order(selling_price=order_db.product.selling_price, actual_price=order_db.product.actual_price, shipping_charges=order_db.product.shipping_charges, order_id=order_db.order_id, product_id_number=order_db.product_id_number, user=user, address=address, transaction_id=order_db.transaction_id, product=order_db.product, quantity=order_db.quantity, total_amount=order_db.total_cost, payment_status=1, mihpayid=order_db.mihpayid, hash=order_db.hash)
+            order_placed = Placed_Order(
+                price=order_db.product.price, 
+                order_id=order_db.order_id, 
+                product_id_number=order_db.product_id_number, 
+                user=user, 
+                address=address, 
+                transaction_id=order_db.transaction_id, 
+                product=order_db.product, 
+                quantity=order_db.quantity, 
+                payment_status=1, 
+                mihpayid=order_db.mihpayid, 
+                hash=order_db.hash
+                )
             order_placed.save()
+
+            
+            # EasyPost shipment
+            try:
+                to_address = easypost.Address.create(
+                    name=address.full_name,
+                    street1=f"{address.house_no}, {address.area}",
+                    city=address.city,
+                    state=address.state,
+                    zip=address.pincode,
+                    country="IN",
+                    phone="9999999999"
+                )
+
+                from_address = easypost.Address.create(
+                    company="JohnnetteStore",
+                    street1="123 Main St",
+                    city="Mumbai",
+                    state="MH",
+                    zip="400001",
+                    country="IN",
+                    phone="18001234567"
+                )
+
+                parcel = easypost.Parcel.create(
+                    length=10,
+                    width=6,
+                    height=4,
+                    weight=500  # grams
+                )
+
+                shipment = easypost.Shipment.create(
+                    to_address=to_address,
+                    from_address=from_address,
+                    parcel=parcel
+                )
+
+                # Buy label with cheapest rate
+                shipment.buy(rate=shipment.lowest_rate())
+
+                # Save tracking info in order (add these fields in model if not present)
+                placed_order.tracking_code = shipment.tracking_code
+                placed_order.label_url = shipment.postage_label.label_url
+                placed_order.save()
+
+            except Exception as e:
+                print("EasyPost error:", e)
 
             update= Order_Tracker(tracking_id=order_db.product_id_number, update_desc="The order has been placed", orderInfo=order_placed)
             update.save()            
                         
-            mail_date.append(order_db.datetime_of_order)
+            mail_date.append(order_db.datetime)
             mail_order_id.append(order_db.order_id)
             mail_product_id.append(order_db.product_id_number)
-            mail_product_title.append(order_db.product.product_title)
+            mail_product_title.append(order_db.product.title)
             mail_quantity.append(order_db.quantity)
-            mail_total_cost.append(order_db.product.selling_price)
+            mail_total_cost.append(order_db.product.price)
             
             order_db.delete()
 
@@ -846,7 +909,7 @@ def checkout(request):
     template1 = f"Dear {address.full_name} \n\nThank you for your recent purchase from our store. We are pleased to confirm that your order has been received and is being processed. Below are the details of your order: \n\nOrder ID: {mail_order_id[0]}\nDate of Purchase: {order_date}\n\n"
     template2 = "Order Summary:\n{}"
     template3 = template2.format('\n'.join(product_info))
-    template4 = f"\n {disc} Shipping: 70INR\n {disc} Taxes: Rs6.00\n {disc} Total: Rs{total}\n\nShipping Information:\n{address.full_name}\n{house_no}, {area}\n{city}, {state} {pincode}\nDelivery Method: Standard Shipping\nEstimated Delivery Date: March 30, 2023\n\nPayment Information:\nPayment Method: {mode}\nTotal Amount Paid: Rs{70+total}\n\nContact Information:\nIf you have any questions or concerns about your order, please do not hesitate to contact us at 1-800-123-4567 or support@johnnette.com.\n\nCancellation and Return Policy:\nYou can cancel your order within 24 hours of placing it. If you are not completely satisfied with your purchase, you can return it for a full refund within 07 days.\n\nThank you for choosing our store. We appreciate your business and hope to see you again soon.\n\nSincerely,\nJohnnetteStore Team."
+    template4 = f"\n {disc} Shipping: 70INR\n {disc} Taxes: Rs6.00\n {disc} Total: Rs{total}\n\nShipping Information:\n{address.full_name}\n{house_no}, {area}\n{city}, {state} {pincode}\nDelivery Method: Standard Shipping\nEstimated Delivery Date: March 30, 2023\n\nPayment Information:\nPayment Method: {mode}\nTotal Amount Paid: Rs{70+total}\n\nContact Information:\nIf you have any questions or concerns about your order, please do not hesitate to contact us at 1-800-123-4567 or support@livingstoneinstitute.com.\n\nCancellation and Return Policy:\nYou can cancel your order within 24 hours of placing it. If you are not completely satisfied with your purchase, you can return it for a full refund within 07 days.\n\nThank you for choosing our store. We appreciate your business and hope to see you again soon.\n\nSincerely,\nLivingstone Luxury Team."
     
     template5=template1+template3+template4
 
@@ -855,7 +918,7 @@ def checkout(request):
         
         template5,
 
-        'yk@johnnette.com',
+        'nisha@johnnette.com',
         [f'{email}'],
         fail_silently=False,
     )     
@@ -870,15 +933,15 @@ def checkout(request):
 
 
 # @csrf_exempt   
-# def payment_failed(request):
-#     TotalCartItems=0
-#     if request.user.is_authenticated:
-#         TotalCartItems = len(Cart_Item.objects.filter(user=request.user))
+def payment_failed(request):
+    TotalCartItems=0
+    if request.user.is_authenticated:
+        TotalCartItems = len(CartItem.objects.filter(user=request.user))
 
-#     context={
-#         "TotalCartItems":TotalCartItems,
-#     }
-#     return render(request, "app/transaction_failed.html", context)
+    context={
+        "TotalCartItems":TotalCartItems,
+    }
+    return render(request, "transaction_failed.html", context)
         
         
         
@@ -886,7 +949,13 @@ def checkout(request):
 
 
 
-
+@login_required(login_url="/login")
+def orders(request):
+    TotalCartItems=0
+    if request.user.is_authenticated:
+        TotalCartItems = len(CartItem.objects.filter(user=request.user))
+    op=Placed_Order.objects.filter(user=request.user).order_by('-id')
+    return render(request, 'orders.html', {"order_placed":op, "TotalCartItems":TotalCartItems})
 
 
 
@@ -942,34 +1011,34 @@ def checkout(request):
 
 
 
-# from django.http import JsonResponse
-# def tracker(request):
-#     TotalCartItems=0
-#     if request.user.is_authenticated:
-#         TotalCartItems = len(Cart_Item.objects.filter(user=request.user))
+from django.http import JsonResponse
+def tracker(request):
+    TotalCartItems=0
+    if request.user.is_authenticated:
+        TotalCartItems = len(CartItem.objects.filter(user=request.user))
 
-#     if request.method == "POST":
-#         productId = request.POST.get('prod_id')
-#         tracking_id = productId
+    if request.method == "POST":
+        productId = request.POST.get('prod_id')
+        tracking_id = productId
 
-#         print(productId)
-#         try:
-#             order = Placed_Order.objects.filter(product_id_number=productId)
-#             if len(order) > 0:
-#                 update = Order_Tracker.objects.filter(tracking_id=productId)
+        print(productId)
+        try:
+            order = Placed_Order.objects.filter(product_id_number=productId)
+            if len(order) > 0:
+                update = Order_Tracker.objects.filter(tracking_id=productId)
 
-#             for order in order:
-#                 pass
+            for order in order:
+                pass
             
-#         except:
-#             return HttpResponse("None")
-#     context = {
-#         "update": update,
-#         "order":order,
-#         "tracking_id":tracking_id,
-#         "TotalCartItems":TotalCartItems,
-#     }
-#     return render(request, 'app/tracker.html', context)
+        except:
+            return HttpResponse("None")
+    context = {
+        "update": update,
+        "order":order,
+        "tracking_id":tracking_id,
+        "TotalCartItems":TotalCartItems,
+    }
+    return render(request, 'tracker.html', context)
 
 
 
